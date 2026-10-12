@@ -59,6 +59,8 @@ Wenn der Browser lokale Speicherung für HTML-Dateien blockiert, bleibt der Fort
 - `bilder/`: alle Motive als PNG und als skalierbares SVG.
 - `artwork_data.json`, `html_template.txt`: Quelldaten der Weltraum-Illustrationen und der früheren Einzeldatei-Version.
 - `werkzeuge/kunst/`: Zeichenwerkzeug für neue Motive (siehe unten).
+- `medien/start.mp4`, `medien/start-poster.jpg`: Startseiten-Video (12 s Loop, H.264) und Standbild.
+- `werkzeuge/video/`: erzeugt das Startseiten-Video aus den Motiven.
 
 ## Neue Motive oder Welten hinzufügen
 
@@ -70,6 +72,12 @@ Wenn der Browser lokale Speicherung für HTML-Dateien blockiert, bleibt der Fort
 4. `node motive-eintragen.mjs` trägt alle Motive in `index.html` (ASSETS) und `sw.js` ein.
 5. Eine neue Welt zusätzlich in `THEMES` in `index.html` anlegen.
 6. In `sw.js` `VERSION` erhöhen, committen und pushen.
+
+## Startseiten-Video neu erzeugen
+
+In `werkzeuge/video` einmalig `npm install`, dann `node start-video.mjs` (ffmpeg muss installiert sein).
+Welche Bilder vorkommen, steht oben im Skript (`WORLDS`). Danach in `sw.js` `VERSION` erhöhen.
+Das Video spielt nur auf der Startseite, stumm, und bleibt bei „Bewegung reduzieren“ als Standbild stehen.
 
 Neue Motive immer hinten anhängen: Ein gespeicherter Spielstand merkt sich die Position des Motivs.
 Keine geschützten Figuren (z. B. aus Serien) zeichnen – das Spiel ist öffentlich erreichbar.

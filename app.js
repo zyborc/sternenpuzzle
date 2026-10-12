@@ -98,9 +98,8 @@ function renderThemes(){
   });
 }
 function updateHero(){
-  const theme=themeOf(saved.theme),hero=ASSETS.find(a=>a.id===theme.hero)||ASSETS[themeMotifs(theme.id)[0]];
+  const theme=themeOf(saved.theme);
   $('heroEyebrow').textContent=theme.eyebrow;$('heroHighlight').textContent=theme.highlight;$('heroText').textContent=theme.text;
-  $('heroArt').src=hero.src;$('heroArt').alt=theme.heroAlt;
 }
 function renderGallery(){
   saved.theme=themeOf(saved.theme).id;
@@ -115,7 +114,12 @@ function renderGallery(){
     button.addEventListener('click',()=>startGame(index,saved.level));$('gallery').append(button);
   });
   document.querySelectorAll('.level').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.n)===saved.level)));
-  updateStars();updateResume();
+  updateStars();updateResume();syncHeroVideo();
+}
+// The start-page video only plays while the gallery is visible, and never with reduced motion.
+function syncHeroVideo(){
+  const video=$('heroVideo'),still=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(runtime.page==='gallery'&&!still&&!document.hidden){video.muted=true;const playing=video.play();if(playing)playing.catch(()=>{});}else video.pause();
 }
 function updateResume(){const r=saved.resume;$('resumeBox').hidden=!r;if(r)$('resumeText').textContent=`${ASSETS[r.motif].title} · ${r.placed.length} von ${r.n*r.n} Teilen geschafft`;}
 const imageCache=new Map();
@@ -138,7 +142,7 @@ async function startGame(motif,n,restore=null){
   pieces.forEach(p=>p.placed=placed.has(p.id));
   runtime.game={motif,n,seed,pieces,order:restore?restore.order.slice():shuffled(pieces.map(p=>p.id),seededRandom(seed^0xA28C49E1)),
     elapsed:restore?restore.elapsed:0,moves:restore?restore.moves:0,hints:restore?restore.hints:0,complete:false};
-  const asset=ASSETS[motif];if(saved.theme!==asset.theme){saved.theme=asset.theme;writeSaved();}runtime.page='game';$('galleryPage').hidden=true;$('gamePage').hidden=false;
+  const asset=ASSETS[motif];if(saved.theme!==asset.theme){saved.theme=asset.theme;writeSaved();}runtime.page='game';syncHeroVideo();$('galleryPage').hidden=true;$('gamePage').hidden=false;
   $('gameTitle').textContent=asset.title;$('gameSubtitle').textContent=`${n*n} Teile · Du schaffst das!`;
   $('referenceImg').src=asset.src;$('previewImg').src=asset.src;$('previewImg').alt=asset.alt;
   $('board').classList.remove('complete');$('helpBtn').disabled=false;runtime.help=true;updateHelp();
@@ -287,7 +291,7 @@ function init(){
   window.addEventListener('pointermove',pointerMove,{passive:false});window.addEventListener('pointerup',pointerUp);
   window.addEventListener('pointercancel',event=>{if(runtime.drag&&event.pointerId===runtime.drag.pointerId)cleanupDrag();});
   window.addEventListener('keydown',event=>{if(event.key==='Escape'){cleanupDrag();if(runtime.page==='game'&&!runtime.paused)selectPiece(null);}});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){cleanupDrag();pauseClock();persistGame();}else resumeClock();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){cleanupDrag();pauseClock();persistGame();}else resumeClock();syncHeroVideo();});
   window.addEventListener('pagehide',()=>{pauseClock();persistGame();});window.addEventListener('pageshow',()=>resumeClock());
   window.addEventListener('resize',cleanupDrag);
   setInterval(()=>{if(runtime.page==='game'&&runtime.game)$('timeStat').textContent=formatTime(elapsedNow());},500);

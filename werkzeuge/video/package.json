@@ -1,0 +1,12 @@
+{
+  "name": "sternenpuzzle-video",
+  "private": true,
+  "type": "module",
+  "description": "Erzeugt das Startseiten-Video (medien/start.mp4) aus den Puzzle-Motiven",
+  "scripts": {
+    "video": "node start-video.mjs"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "0.1.65"
+  }
+}
