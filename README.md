@@ -79,6 +79,13 @@ In `werkzeuge/video` einmalig `npm install`, dann `node start-video.mjs` (ffmpeg
 Welche Bilder vorkommen, steht oben im Skript (`WORLDS`). Danach in `sw.js` `VERSION` erhöhen.
 Das Video spielt nur auf der Startseite, stumm, und bleibt bei „Bewegung reduzieren“ als Standbild stehen.
 
+## Teaser-Video zum Teilen
+
+`medien/teaser-hochformat.mp4` (1080 × 1920, für Status/Story/Reels) und `medien/teaser-quadrat.mp4` (1080 × 1080):
+18 Sekunden Motion Graphics mit selbst komponiertem Glockenspiel-Jingle. Neu erzeugen mit `node teaser.mjs` in `werkzeuge/video`.
+Bild und Ton hängen am selben Taktplan (`CUES` in `teaser.mjs`, Synthesizer in `musik.mjs`); Figuren kommen aus `werkzeuge/kunst` (`figuren.mjs`).
+Schrift: Fredoka (SIL Open Font License, `werkzeuge/video/schrift/OFL.txt`).
+
 Neue Motive immer hinten anhängen: Ein gespeicherter Spielstand merkt sich die Position des Motivs.
 Keine geschützten Figuren (z. B. aus Serien) zeichnen – das Spiel ist öffentlich erreichbar.
 Alle Motive wurden eigens als Illustrationen gezeichnet; es sind keine Fotos.
