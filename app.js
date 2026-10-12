@@ -9,7 +9,7 @@ const BOARD_SIZE = 1200;
 const svgIcon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const runtime = {page:'gallery', game:null, selected:null, drag:null, loading:false, generation:0,
   sessionStarted:null, help:true, sound:false, audio:null, hintTimer:null, saveTimer:null,
-  paused:false, ghost:null, hoveredSlot:null, suppressClicksUntil:0, updateReady:false};
+  paused:false, ghost:null, hoveredSlot:null, suppressClicksUntil:0, updateReady:false, heroStarted:false};
 let storageAvailable = true;
 let saved = {version:1, level:3, theme:THEMES[0].id, stars:[], sound:false, resume:null};
 function seededRandom(seed) {
@@ -116,10 +116,13 @@ function renderGallery(){
   document.querySelectorAll('.level').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.n)===saved.level)));
   updateStars();updateResume();syncHeroVideo();
 }
-// The start-page video only plays while the gallery is visible, and never with reduced motion.
+// The start-page video only plays while the gallery is visible. With reduced motion (or when autoplay is
+// blocked, e.g. iOS low power mode) it waits for the play button instead of starting by itself.
 function syncHeroVideo(){
-  const video=$('heroVideo'),still=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(runtime.page==='gallery'&&!still&&!document.hidden){video.muted=true;const playing=video.play();if(playing)playing.catch(()=>{});}else video.pause();
+  const video=$('heroVideo'),still=window.matchMedia('(prefers-reduced-motion: reduce)').matches&&!runtime.heroStarted;
+  if(runtime.page!=='gallery'||document.hidden||still){video.pause();$('heroPlay').hidden=runtime.page!=='gallery'||!still;return;}
+  video.muted=true;const playing=video.play();
+  if(playing)playing.then(()=>{$('heroPlay').hidden=true;}).catch(()=>{$('heroPlay').hidden=false;});
 }
 function updateResume(){const r=saved.resume;$('resumeBox').hidden=!r;if(r)$('resumeText').textContent=`${ASSETS[r.motif].title} · ${r.placed.length} von ${r.n*r.n} Teilen geschafft`;}
 const imageCache=new Map();
@@ -273,6 +276,7 @@ function init(){
   readSaved();runtime.sound=saved.sound;updateSound();renderGallery();
   if(!storageAvailable)$('storageNote').textContent='Offline · Keine Datenübertragung · Fortschritt nur in dieser Sitzung';
   document.querySelectorAll('.level').forEach(button=>button.addEventListener('click',()=>{saved.level=Number(button.dataset.n);writeSaved();renderGallery();}));
+  $('heroPlay').addEventListener('click',()=>{runtime.heroStarted=true;syncHeroVideo();});
   $('soundBtn').addEventListener('click',()=>{runtime.sound=!runtime.sound;saved.sound=runtime.sound;updateSound();writeSaved();if(runtime.sound)playSound('correct');});
   $('homeBtn').addEventListener('click',showGallery);$('backBtn').addEventListener('click',showGallery);
   $('resumeBtn').addEventListener('click',()=>{const r=saved.resume;if(r)startGame(r.motif,r.n,r);});
