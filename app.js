@@ -9,7 +9,7 @@ const BOARD_SIZE = 1200;
 const svgIcon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const runtime = {page:'gallery', game:null, selected:null, drag:null, loading:false, generation:0,
   sessionStarted:null, help:true, sound:false, audio:null, hintTimer:null, saveTimer:null,
-  paused:false, ghost:null, hoveredSlot:null, suppressClicksUntil:0};
+  paused:false, ghost:null, hoveredSlot:null, suppressClicksUntil:0, updateReady:false};
 let storageAvailable = true;
 let saved = {version:1, level:3, theme:THEMES[0].id, stars:[], sound:false, resume:null};
 function seededRandom(seed) {
@@ -247,7 +247,7 @@ function pointerUp(event){
 }
 function showGallery(){
   if(runtime.loading){++runtime.generation;runtime.loading=false;}
-  cleanupDrag();clearHint();pauseClock();persistGame();runtime.page='gallery';runtime.paused=false;
+  cleanupDrag();clearHint();pauseClock();persistGame();if(runtime.updateReady){reloadForUpdate();return;}runtime.page='gallery';runtime.paused=false;
   $('gamePage').hidden=true;$('galleryPage').hidden=false;renderGallery();window.scrollTo(0,0);
 }
 function openDialog(id){if(runtime.loading)return;cleanupDrag();runtime.paused=true;pauseClock();persistGame();$(id).showModal();}
@@ -300,10 +300,19 @@ function init(){
 }
 // Home-screen web app: offline cache, install hint for iPhone/iPad, no accidental zooming.
 const INSTALL_HINT_KEY='sternenpuzzle.installHintHidden';
+function reloadForUpdate(){pauseClock();persistGame();location.reload();}
 function isStandalone(){return navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;}
 function isAppleMobile(){return /iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
 function initWebApp(){
-  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+    // A new version takes over: reload right away on the start page, otherwise when returning to it.
+    const hadController=!!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadController||runtime.updateReady)return;runtime.updateReady=true;if(runtime.page==='gallery')reloadForUpdate();});
+    navigator.serviceWorker.register('sw.js').then(registration=>{
+      // iOS resumes home-screen apps without a new page load, so look for updates when the app comes back.
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)registration.update().catch(()=>{});});
+    }).catch(()=>{});
+  }
   let hintHidden=false;try{hintHidden=localStorage.getItem(INSTALL_HINT_KEY)==='1';}catch{}
   $('installHint').hidden=hintHidden||isStandalone()||!isAppleMobile();
   $('installHintClose').addEventListener('click',()=>{$('installHint').hidden=true;try{localStorage.setItem(INSTALL_HINT_KEY,'1');}catch{}});
