@@ -11,7 +11,7 @@ const runtime = {page:'gallery', game:null, selected:null, drag:null, loading:fa
   sessionStarted:null, help:true, sound:false, audio:null, hintTimer:null, saveTimer:null,
   paused:false, ghost:null, hoveredSlot:null, suppressClicksUntil:0};
 let storageAvailable = true;
-let saved = {version:1, level:3, stars:[], sound:false, resume:null};
+let saved = {version:1, level:3, theme:THEMES[0].id, stars:[], sound:false, resume:null};
 function seededRandom(seed) {
   let value=seed>>>0;
   return function(){value=(value+0x6D2B79F5)>>>0;let t=Math.imul(value^(value>>>15),1|value);t^=t+Math.imul(t^(t>>>7),61|t);return ((t^(t>>>14))>>>0)/4294967296;};
@@ -41,9 +41,10 @@ function puzzlePath(piece,cell,pad,PathClass=Path2D){
   edge(pad+cell,pad+cell,-cell,0,piece.edges[2]);edge(pad,pad+cell,0,-cell,piece.edges[3]);p.closePath();return p;
 }
 function sanitizeSave(data){
-  const clean={version:1,level:3,stars:[],sound:false,resume:null};
+  const clean={version:1,level:3,theme:THEMES[0].id,stars:[],sound:false,resume:null};
   if(!data || data.version!==1)return clean;
   if(LEVELS.includes(data.level))clean.level=data.level;
+  if(THEMES.some(t=>t.id===data.theme))clean.theme=data.theme;
   clean.sound=data.sound===true;
   if(Array.isArray(data.stars))clean.stars=[...new Set(data.stars.filter(x=>typeof x==='string'&&ASSETS.some(a=>LEVELS.some(n=>x===`${a.id}:${n}`))))];
   const r=data.resume;
@@ -80,14 +81,37 @@ function playSound(kind){
 }
 function updateSound(){const on=runtime.sound;$('soundBtn').setAttribute('aria-pressed',String(on));$('soundBtn').setAttribute('aria-label',on?'Ton ausschalten':'Ton einschalten');$('soundUse').setAttribute('href',on?'#i-sound':'#i-mute');$('soundLabel').textContent=on?'Ton an':'Ton aus';}
 function updateStars(){ $('starsCount').textContent=`${saved.stars.length} / ${ASSETS.length*LEVELS.length}`; }
+const activeThemes=()=>THEMES.filter(t=>ASSETS.some(a=>a.theme===t.id));
+const themeOf=id=>activeThemes().find(t=>t.id===id)||activeThemes()[0];
+// Indexes into ASSETS (the saved resume and startGame use global indexes) for one theme.
+const themeMotifs=themeId=>ASSETS.map((a,i)=>a.theme===themeId?i:-1).filter(i=>i>=0);
+function themeStars(themeId){const ids=new Set(themeMotifs(themeId).map(i=>ASSETS[i].id));return saved.stars.filter(s=>ids.has(s.split(':')[0])).length;}
+function renderThemes(){
+  $('themes').replaceChildren();$('themes').hidden=activeThemes().length<2;
+  activeThemes().forEach(theme=>{
+    const hero=ASSETS.find(a=>a.id===theme.hero)||ASSETS[themeMotifs(theme.id)[0]],total=themeMotifs(theme.id).length*LEVELS.length,stars=themeStars(theme.id);
+    const button=document.createElement('button');button.type='button';button.className='theme';button.setAttribute('aria-pressed',String(theme.id===saved.theme));
+    button.setAttribute('aria-label',`Welt ${theme.title}, ${stars} von ${total} Sternen`);
+    button.innerHTML=`<img src="${hero.src}" alt="" width="64" height="64"><span><span class="theme-name">${svgIcon(theme.icon)}${theme.title}</span><span class="theme-stars">${svgIcon('star')}${stars} / ${total}</span></span>`;
+    button.addEventListener('click',()=>{if(saved.theme===theme.id)return;saved.theme=theme.id;writeSaved();renderGallery();});
+    $('themes').append(button);
+  });
+}
+function updateHero(){
+  const theme=themeOf(saved.theme),hero=ASSETS.find(a=>a.id===theme.hero)||ASSETS[themeMotifs(theme.id)[0]];
+  $('heroEyebrow').textContent=theme.eyebrow;$('heroHighlight').textContent=theme.highlight;$('heroText').textContent=theme.text;
+  $('heroArt').src=hero.src;$('heroArt').alt=theme.heroAlt;
+}
 function renderGallery(){
-  $('gallery').replaceChildren();
-  ASSETS.forEach((asset,index)=>{
-    const earned=saved.stars.filter(s=>s.startsWith(asset.id+':')).length;
+  saved.theme=themeOf(saved.theme).id;
+  $('gallery').replaceChildren();renderThemes();updateHero();
+  const icon=themeOf(saved.theme).icon;
+  themeMotifs(saved.theme).forEach((index,position)=>{
+    const asset=ASSETS[index],earned=saved.stars.filter(s=>s.startsWith(asset.id+':')).length;
     const button=document.createElement('button');button.type='button';button.className='motif';
     button.setAttribute('aria-label',`${asset.title}: Puzzle mit ${saved.level*saved.level} Teilen starten. ${earned} von 4 Sternen.`);
     const starIcons=LEVELS.map(n=>`<svg class="icon ${saved.stars.includes(asset.id+':'+n)?'earned':''}" aria-hidden="true"><use href="#i-star"/></svg>`).join('');
-    button.innerHTML=`<div class="motif-image"><img src="${asset.src}" alt="${asset.alt}" width="480" height="480" loading="lazy"><span class="motif-badge">${svgIcon('rocket')}ABENTEUER ${String(index+1).padStart(2,'0')}</span></div><div class="motif-copy"><h3>${asset.title}</h3><p>${asset.description}</p><div class="motif-foot"><span class="motif-action">Los geht’s ${svgIcon('arrow')}</span><span class="star-row" aria-label="${earned} von 4 Sternen">${starIcons}</span></div></div>`;
+    button.innerHTML=`<div class="motif-image"><img src="${asset.src}" alt="${asset.alt}" width="480" height="480" loading="lazy"><span class="motif-badge">${svgIcon(icon)}ABENTEUER ${String(position+1).padStart(2,'0')}</span></div><div class="motif-copy"><h3>${asset.title}</h3><p>${asset.description}</p><div class="motif-foot"><span class="motif-action">Los geht’s ${svgIcon('arrow')}</span><span class="star-row" aria-label="${earned} von 4 Sternen">${starIcons}</span></div></div>`;
     button.addEventListener('click',()=>startGame(index,saved.level));$('gallery').append(button);
   });
   document.querySelectorAll('.level').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.n)===saved.level)));
@@ -114,7 +138,7 @@ async function startGame(motif,n,restore=null){
   pieces.forEach(p=>p.placed=placed.has(p.id));
   runtime.game={motif,n,seed,pieces,order:restore?restore.order.slice():shuffled(pieces.map(p=>p.id),seededRandom(seed^0xA28C49E1)),
     elapsed:restore?restore.elapsed:0,moves:restore?restore.moves:0,hints:restore?restore.hints:0,complete:false};
-  const asset=ASSETS[motif];runtime.page='game';$('galleryPage').hidden=true;$('gamePage').hidden=false;
+  const asset=ASSETS[motif];if(saved.theme!==asset.theme){saved.theme=asset.theme;writeSaved();}runtime.page='game';$('galleryPage').hidden=true;$('gamePage').hidden=false;
   $('gameTitle').textContent=asset.title;$('gameSubtitle').textContent=`${n*n} Teile · Du schaffst das!`;
   $('referenceImg').src=asset.src;$('previewImg').src=asset.src;$('previewImg').alt=asset.alt;
   $('board').classList.remove('complete');$('helpBtn').disabled=false;runtime.help=true;updateHelp();
@@ -242,7 +266,7 @@ function finishGame(){
   setStatus('Sternenstark! Dein Puzzle ist fertig.');playSound('win');confetti();runtime.paused=true;$('winDialog').showModal();
 }
 function init(){
-  readSaved();runtime.sound=saved.sound;updateSound();renderGallery();$('heroArt').src=ASSETS[0].src;
+  readSaved();runtime.sound=saved.sound;updateSound();renderGallery();
   if(!storageAvailable)$('storageNote').textContent='Offline · Keine Datenübertragung · Fortschritt nur in dieser Sitzung';
   document.querySelectorAll('.level').forEach(button=>button.addEventListener('click',()=>{saved.level=Number(button.dataset.n);writeSaved();renderGallery();}));
   $('soundBtn').addEventListener('click',()=>{runtime.sound=!runtime.sound;saved.sound=runtime.sound;updateSound();writeSaved();if(runtime.sound)playSound('correct');});
@@ -258,7 +282,7 @@ function init(){
   $('confirmRestart').addEventListener('click',()=>{const g=runtime.game;closeDialog('restartDialog');$('helpBtn').disabled=false;startGame(g.motif,g.n);});
   $('closeWin').addEventListener('click',()=>closeDialog('winDialog'));
   $('winHome').addEventListener('click',()=>{closeDialog('winDialog');showGallery();});
-  $('nextPuzzle').addEventListener('click',()=>{const g=runtime.game;closeDialog('winDialog');$('helpBtn').disabled=false;startGame((g.motif+1)%ASSETS.length,g.n);});
+  $('nextPuzzle').addEventListener('click',()=>{const g=runtime.game;closeDialog('winDialog');$('helpBtn').disabled=false;const list=themeMotifs(ASSETS[g.motif].theme);startGame(list[(list.indexOf(g.motif)+1)%list.length],g.n);});
   ['previewDialog','restartDialog','winDialog'].forEach(id=>$(id).addEventListener('close',afterDialogClose));
   window.addEventListener('pointermove',pointerMove,{passive:false});window.addEventListener('pointerup',pointerUp);
   window.addEventListener('pointercancel',event=>{if(runtime.drag&&event.pointerId===runtime.drag.pointerId)cleanupDrag();});

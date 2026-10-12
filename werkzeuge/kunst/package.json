@@ -1,0 +1,12 @@
+{
+  "name": "sternenpuzzle-kunst",
+  "private": true,
+  "type": "module",
+  "description": "Zeichenwerkzeug für die Sternenpuzzle-Motive",
+  "scripts": {
+    "alle": "node rendern.mjs --alle"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "2.6.2"
+  }
+}

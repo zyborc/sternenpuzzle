@@ -27,7 +27,8 @@ oder im Ordner `python -m http.server 8765` ausführen und `http://localhost:876
 
 ## Spielen
 
-- 6 eigene Chibi-/Kawaii-Weltraumillustrationen, jeweils 1200 × 1200 Pixel.
+- Drei Welten mit je 6 eigenen Chibi-/Kawaii-Illustrationen (1200 × 1200 Pixel): Weltraum, Dinos und Rettungs-Hunde.
+- Die Welt wird oben auf der Startseite gewählt; Sterne werden pro Welt angezeigt.
 - 4, 9, 16 oder 25 Teile mit echten Puzzlekonturen.
 - Puzzleteil auf seinen Platz ziehen oder erst ein Teil und dann den Platz antippen.
 - Mit Tab und Enter/Leertaste bedienen; nach Auswahl per Tastatur springt der Fokus zum Brett.
@@ -36,14 +37,14 @@ oder im Ordner `python -m http.server 8765` ausführen und `http://localhost:876
 - Die Vorschau zeigt das ganze Bild und pausiert die Uhr.
 - Ein Tipp markiert das ausgewählte Teil und seinen Platz.
 - Kein Zeitlimit und keine Strafpunkte.
-- Je ein Sammelstern pro Motiv und Teilezahl (maximal 24).
+- Je ein Sammelstern pro Motiv und Teilezahl (maximal 72).
 - Ton ist anfangs ausgeschaltet und lässt sich optional aktivieren.
 - Reduzierte Animationen bei entsprechender Betriebssystemeinstellung.
 
 ## Fortschritt und Datenschutz
 
 Die App lädt nur ihre eigenen Dateien, verwendet keine Werbung und kein Tracking.
-Der aktuelle Spielstand, Sterne, Ton-Einstellung und bevorzugte Teilezahl werden
+Der aktuelle Spielstand, Sterne, Ton-Einstellung, gewählte Welt und bevorzugte Teilezahl werden
 nach Möglichkeit ausschließlich im Browser unter localStorage gespeichert.
 Es wird jeweils eine nicht abgeschlossene Runde zum Fortsetzen gespeichert.
 Werden Browserspeicher oder Browserprofil gelöscht/gewechselt, geht der gespeicherte Fortschritt verloren.
@@ -56,7 +57,22 @@ Wenn der Browser lokale Speicherung für HTML-Dateien blockiert, bleibt der Fort
 - `style.css`: responsive Oberfläche, iPhone/iPad-Anpassungen und reduziertes Animationsprofil.
 - `manifest.webmanifest`, `sw.js`, `icons/`: Installation als Home-Bildschirm-App und Offline-Cache.
 - `bilder/`: alle Motive als PNG und als skalierbares SVG.
-- `artwork_data.json`, `html_template.txt`: Quelldaten der Illustrationen und der früheren Einzeldatei-Version.
+- `artwork_data.json`, `html_template.txt`: Quelldaten der Weltraum-Illustrationen und der früheren Einzeldatei-Version.
+- `werkzeuge/kunst/`: Zeichenwerkzeug für neue Motive (siehe unten).
+
+## Neue Motive oder Welten hinzufügen
+
+1. Einmalig in `werkzeuge/kunst` `npm install` ausführen.
+2. Ein Motiv ist eine Datei `werkzeuge/kunst/motive/<nr>_<name>.mjs`: Sie exportiert `meta`
+   (`slug`, `theme`, `title`, `description`, `alt`) und eine Funktion, die das SVG liefert.
+   Die gemeinsamen Stil-Helfer stehen in `stil.mjs`, figurenspezifische Helfer in `dinos.mjs` bzw. `hunde.mjs`.
+3. `node rendern.mjs motive/<datei>.mjs` erzeugt `bilder/<slug>.svg` und `.png`.
+4. `node motive-eintragen.mjs` trägt alle Motive in `index.html` (ASSETS) und `sw.js` ein.
+5. Eine neue Welt zusätzlich in `THEMES` in `index.html` anlegen.
+6. In `sw.js` `VERSION` erhöhen, committen und pushen.
+
+Neue Motive immer hinten anhängen: Ein gespeicherter Spielstand merkt sich die Position des Motivs.
+Keine geschützten Figuren (z. B. aus Serien) zeichnen – das Spiel ist öffentlich erreichbar.
 Alle Motive wurden eigens als Illustrationen gezeichnet; es sind keine Fotos.
 
 ## Prüfung
