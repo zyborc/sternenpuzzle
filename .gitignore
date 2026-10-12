@@ -1,0 +1,4 @@
+# Identical duplicate of app.js
+app (1).js
+# Local browser test output
+.playwright-mcp/
