@@ -11,7 +11,7 @@ const runtime = {page:'gallery', game:null, selected:null, drag:null, loading:fa
   sessionStarted:null, help:true, sound:false, audio:null, hintTimer:null, saveTimer:null,
   paused:false, ghost:null, hoveredSlot:null, suppressClicksUntil:0, updateReady:false, heroStarted:false};
 let storageAvailable = true;
-let saved = {version:1, level:3, theme:THEMES[0].id, stars:[], sound:false, resume:null};
+let saved = {version:1, level:3, theme:THEMES[0].id, stars:[], sound:false, labels:'zahlen', pieceLabels:false, resume:null};
 function seededRandom(seed) {
   let value=seed>>>0;
   return function(){value=(value+0x6D2B79F5)>>>0;let t=Math.imul(value^(value>>>15),1|value);t^=t+Math.imul(t^(t>>>7),61|t);return ((t^(t>>>14))>>>0)/4294967296;};
@@ -41,11 +41,13 @@ function puzzlePath(piece,cell,pad,PathClass=Path2D){
   edge(pad+cell,pad+cell,-cell,0,piece.edges[2]);edge(pad,pad+cell,0,-cell,piece.edges[3]);p.closePath();return p;
 }
 function sanitizeSave(data){
-  const clean={version:1,level:3,theme:THEMES[0].id,stars:[],sound:false,resume:null};
+  const clean={version:1,level:3,theme:THEMES[0].id,stars:[],sound:false,labels:'zahlen',pieceLabels:false,resume:null};
   if(!data || data.version!==1)return clean;
   if(LEVELS.includes(data.level))clean.level=data.level;
   if(THEMES.some(t=>t.id===data.theme))clean.theme=data.theme;
   clean.sound=data.sound===true;
+  if(LABEL_MODES.includes(data.labels))clean.labels=data.labels;
+  clean.pieceLabels=data.pieceLabels===true;
   if(Array.isArray(data.stars))clean.stars=[...new Set(data.stars.filter(x=>typeof x==='string'&&ASSETS.some(a=>LEVELS.some(n=>x===`${a.id}:${n}`))))];
   const r=data.resume;
   if(r && Number.isInteger(r.motif) && r.motif>=0 && r.motif<ASSETS.length && LEVELS.includes(r.n) && Number.isInteger(r.seed)){
@@ -80,6 +82,34 @@ function playSound(kind){
   }catch{runtime.sound=false;saved.sound=false;updateSound();writeSaved();}
 }
 function updateSound(){const on=runtime.sound;$('soundBtn').setAttribute('aria-pressed',String(on));$('soundBtn').setAttribute('aria-label',on?'Ton ausschalten':'Ton einschalten');$('soundUse').setAttribute('href',on?'#i-sound':'#i-mute');$('soundLabel').textContent=on?'Ton an':'Ton aus';}
+// Learning labels on the board: numbers, capital letters, dice dots (up to 9 pieces) or none.
+const LABEL_MODES=['zahlen','buchstaben','wuerfel','aus'];
+const LETTER_NAMES=['A','Be','Ze','De','E','Eff','Ge','Ha','I','Jott','Ka','Ell','Emm','Enn','O','Pe','Ku','Err','Ess','Te','U','Vau','We','Ix','Ypsilon'];
+const LETTER_WORDS=['Affe','Ball','Clown','Dino','Esel','Fisch','Giraffe','Hund','Igel','Jacke','Katze','Löwe','Maus','Nase','Ohr','Pinguin','Qualle','Rakete','Sonne','Tiger','Uhu','Vogel','Wal','Xylophon','Yeti'];
+// Dot positions in a 3×3 grid, like on a die; 7 to 9 continue the pattern.
+const DICE_DOTS=[[4],[0,8],[0,4,8],[0,2,6,8],[0,2,4,6,8],[0,2,3,5,6,8],[0,2,3,4,5,6,8],[0,1,2,3,5,6,7,8],[0,1,2,3,4,5,6,7,8]];
+const diceSvg=count=>`<svg class="dice" viewBox="0 0 24 24" aria-hidden="true">${DICE_DOTS[count-1].map(i=>`<circle cx="${5+i%3*7}" cy="${5+Math.floor(i/3)*7}" r="2.3"/>`).join('')}</svg>`;
+const labelMode=n=>saved.labels==='wuerfel'&&n*n>DICE_DOTS.length?'zahlen':saved.labels;
+// text: short name for screen readers, show: written in the status line, say: read aloud.
+function slotLabel(id,mode){
+  const number=String(id+1);
+  if(mode==='buchstaben'){const letter=String.fromCharCode(65+id);return {text:letter,show:`${letter} wie ${LETTER_WORDS[id]}`,say:`${LETTER_NAMES[id]} wie ${LETTER_WORDS[id]}`,html:letter};}
+  if(mode==='wuerfel')return {text:number,show:id===0?'1 Punkt':`${number} Punkte`,say:number,html:diceSvg(id+1)};
+  return {text:number,show:number,say:number,html:mode==='aus'?'':number};
+}
+function labelElement(id,mode,className){const el=document.createElement('span');el.className=className+(mode==='wuerfel'?' is-dice':'');el.innerHTML=slotLabel(id,mode).html;el.setAttribute('aria-hidden','true');return el;}
+// Read-aloud uses the device's own German voice (works offline on iPhone/iPad) and follows the sound button.
+function speak(text){
+  if(!runtime.sound||!text||!('speechSynthesis' in window))return;
+  try{const synth=window.speechSynthesis,utterance=new SpeechSynthesisUtterance(text);utterance.lang='de-DE';utterance.rate=.85;
+    const voice=synth.getVoices().find(v=>/^de([-_]|$)/i.test(v.lang));if(voice)utterance.voice=voice;synth.cancel();synth.speak(utterance);}catch{}
+}
+function updateLabelOptions(){
+  document.querySelectorAll('.mode').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===saved.labels)));
+  const toggle=$('pieceLabelsBtn'),on=saved.pieceLabels&&saved.labels!=='aus';toggle.disabled=saved.labels==='aus';toggle.setAttribute('aria-pressed',String(on));
+  $('pieceLabelsText').textContent=on?'Zeichen auf den Teilen: an':'Zeichen auf den Teilen: aus';
+  $('modeNote').hidden=!(saved.labels==='wuerfel'&&saved.level*saved.level>DICE_DOTS.length);
+}
 function updateStars(){ $('starsCount').textContent=`${saved.stars.length} / ${ASSETS.length*LEVELS.length}`; }
 const activeThemes=()=>THEMES.filter(t=>ASSETS.some(a=>a.theme===t.id));
 const themeOf=id=>activeThemes().find(t=>t.id===id)||activeThemes()[0];
@@ -114,7 +144,7 @@ function renderGallery(){
     button.addEventListener('click',()=>startGame(index,saved.level));$('gallery').append(button);
   });
   document.querySelectorAll('.level').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.n)===saved.level)));
-  updateStars();updateResume();syncHeroVideo();
+  updateLabelOptions();updateStars();updateResume();syncHeroVideo();
 }
 // The start-page video only plays while the gallery is visible. With reduced motion (or when autoplay is
 // blocked, e.g. iOS low power mode) it waits for the play button instead of starting by itself.
@@ -150,7 +180,8 @@ async function startGame(motif,n,restore=null){
   $('referenceImg').src=asset.src;$('previewImg').src=asset.src;$('previewImg').alt=asset.alt;
   $('board').classList.remove('complete');$('helpBtn').disabled=false;runtime.help=true;updateHelp();
   $('slots').replaceChildren();$('slots').style.setProperty('--n',n);$('slots').classList.remove('has-selection');
-  pieces.forEach(p=>{const b=document.createElement('button');b.type='button';b.className='slot';b.dataset.id=p.id;b.setAttribute('aria-label',`Platz ${p.id+1}, Reihe ${p.row+1}, Spalte ${p.col+1}`);const label=document.createElement('span');label.className='slot-label';label.textContent=p.id+1;b.append(label);b.addEventListener('click',()=>tryPlace(runtime.selected,p.id));b.addEventListener('keydown',event=>{const step={ArrowLeft:-1,ArrowRight:1,ArrowUp:-n,ArrowDown:n}[event.key];if(step!==undefined){event.preventDefault();let next=p.id+step;while(next>=0&&next<pieces.length){const target=$('slots').children[next];if(!target.disabled){target.focus({preventScroll:true});break;}next+=step;}}});$('slots').append(b);});
+  const mode=labelMode(n);
+  pieces.forEach(p=>{const b=document.createElement('button');b.type='button';b.className='slot';b.dataset.id=p.id;b.setAttribute('aria-label',`Platz ${slotLabel(p.id,mode).text}, Reihe ${p.row+1}, Spalte ${p.col+1}`);if(mode!=='aus')b.append(labelElement(p.id,mode,'slot-label'));b.addEventListener('click',()=>tryPlace(runtime.selected,p.id));b.addEventListener('keydown',event=>{const step={ArrowLeft:-1,ArrowRight:1,ArrowUp:-n,ArrowDown:n}[event.key];if(step!==undefined){event.preventDefault();let next=p.id+step;while(next>=0&&next<pieces.length){const target=$('slots').children[next];if(!target.disabled){target.focus({preventScroll:true});break;}next+=step;}}});$('slots').append(b);});
   $('boardCanvas').getContext('2d').clearRect(0,0,BOARD_SIZE,BOARD_SIZE);$('tray').replaceChildren();$('tray').dataset.count=n*n;
   $('hintBtn').disabled=true;$('shuffleBtn').disabled=true;$('restartBtn').disabled=true;setStatus('Deine Puzzleteile werden vorbereitet …');window.scrollTo(0,0);
   try{
@@ -163,13 +194,14 @@ async function startGame(motif,n,restore=null){
 }
 function renderBoard(){
   const g=runtime.game,c=$('boardCanvas').getContext('2d');c.clearRect(0,0,BOARD_SIZE,BOARD_SIZE);
-  g.pieces.forEach(p=>{const slot=$('slots').children[p.id];slot.classList.toggle('placed',p.placed);slot.disabled=p.placed;slot.setAttribute('aria-label',`Platz ${p.id+1}, Reihe ${p.row+1}, Spalte ${p.col+1}${p.placed?', bereits eingesetzt':''}`);if(p.placed)c.drawImage(p.canvas,p.col*p.cell-p.pad,p.row*p.cell-p.pad);});
+  g.pieces.forEach(p=>{const slot=$('slots').children[p.id];slot.classList.toggle('placed',p.placed);slot.disabled=p.placed;slot.setAttribute('aria-label',`Platz ${slotLabel(p.id,labelMode(g.n)).text}, Reihe ${p.row+1}, Spalte ${p.col+1}${p.placed?', bereits eingesetzt':''}`);if(p.placed)c.drawImage(p.canvas,p.col*p.cell-p.pad,p.row*p.cell-p.pad);});
 }
 function renderTray(){
-  const g=runtime.game;$('tray').replaceChildren();g.order=g.order.filter(id=>!g.pieces[id].placed);
+  const g=runtime.game,mode=labelMode(g.n),marked=saved.pieceLabels&&mode!=='aus';$('tray').replaceChildren();g.order=g.order.filter(id=>!g.pieces[id].placed);
   g.order.forEach((id,index)=>{
     const piece=g.pieces[id],button=document.createElement('button');button.type='button';button.className='piece';button.dataset.piece=id;
     button.setAttribute('aria-label',`Puzzleteil ${index+1} auswählen`);button.setAttribute('aria-pressed',String(runtime.selected===id));button.classList.toggle('selected',runtime.selected===id);button.title='Antippen oder ins Bild ziehen';button.append(piece.canvas);
+    if(marked){button.append(labelElement(id,mode,'piece-label'));button.setAttribute('aria-label',`Puzzleteil ${index+1} mit Zeichen ${slotLabel(id,mode).text} auswählen`);}
     button.addEventListener('click',event=>{if(performance.now()<runtime.suppressClicksUntil)return;selectPiece(runtime.selected===id?null:id);if(event.detail===0&&runtime.selected!==null){const first=[...$('slots').children].find(s=>!s.disabled);if(first)first.focus({preventScroll:true});}});
     button.addEventListener('pointerdown',event=>onPiecePointerDown(event,id,button));$('tray').append(button);
   });
@@ -190,14 +222,21 @@ function selectPiece(id,quiet=false){
 }
 function tryPlace(id,target){
   const g=runtime.game;if(runtime.loading||!g||g.complete)return;
-  if(id===null||id===undefined){setStatus('Tippe zuerst auf eines der freien Puzzleteile.');return;}
+  const mode=labelMode(g.n);
+  if(id===null||id===undefined){
+    // Tapping a free place without a piece names its sign, so the signs can be explored on their own.
+    if(mode!=='aus'&&Number.isInteger(target)&&target>=0&&target<g.pieces.length){const l=slotLabel(target,mode);setStatus(`Das ist ${l.show}. Tippe jetzt auf ein Puzzleteil.`);speak(l.say);}
+    else setStatus('Tippe zuerst auf eines der freien Puzzleteile.');
+    return;
+  }
   if(!Number.isInteger(id)||id<0||id>=g.pieces.length||!Number.isInteger(target)||target<0||target>=g.pieces.length)return;
   if(g.pieces[id].placed||g.pieces[target].placed)return;
   g.moves++;
   if(id===target){
     clearHint();g.pieces[id].placed=true;runtime.selected=null;$('slots').classList.remove('has-selection');renderBoard();renderTray();updateProgress();playSound('correct');
     const count=g.pieces.filter(p=>p.placed).length;
-    const phrases=['Super, das passt!','Ein Stück näher an den Sternen!','Wunderbar eingesetzt!','Genau richtig. Weiter so!','Dein Bild wird immer schöner!'];setStatus(phrases[count%phrases.length]);
+    const phrases=['Super, das passt!','Ein Stück näher an den Sternen!','Wunderbar eingesetzt!','Genau richtig. Weiter so!','Dein Bild wird immer schöner!'],phrase=phrases[count%phrases.length];
+    if(mode==='aus')setStatus(phrase);else{const l=slotLabel(id,mode);setStatus(`${l.show}! ${phrase}`);speak(l.say);}
     persistGame();
     if(count===g.pieces.length)finishGame();
     else {const next=$('tray').querySelector('.piece');if(next)next.focus({preventScroll:true});}
@@ -212,7 +251,8 @@ function giveHint(){
   const id=runtime.selected!==null?runtime.selected:g.order[0];if(id===undefined)return;
   selectPiece(id,true);g.hints++;const slot=$('slots').children[id];slot.classList.add('hint');
   const button=$('tray').querySelector(`[data-piece="${id}"]`);if(button)button.scrollIntoView({block:'nearest',behavior:'smooth'});
-  setStatus(`Der leuchtende Platz ${id+1} gehört zu deinem ausgewählten Teil. Probier’s aus!`);playSound('hint');
+  const mode=labelMode(g.n),l=slotLabel(id,mode);
+  setStatus(`Der leuchtende Platz${mode==='aus'?'':' '+l.show} gehört zu deinem ausgewählten Teil. Probier’s aus!`);playSound('hint');if(mode!=='aus')speak(l.say);
   runtime.hintTimer=setTimeout(clearHint,5500);persistGame();
 }
 function updateHelp(){const on=runtime.help;$('board').classList.toggle('show-help',on);$('helpBtn').setAttribute('aria-pressed',String(on));$('helpLabel').textContent=on?'Bildhilfe an':'Bildhilfe aus';}
@@ -236,6 +276,7 @@ function pointerMove(event){
     d.active=true;selectPiece(d.id,true);d.button.classList.add('drag-origin');
     const g=runtime.game,p=g.pieces[d.id],ghost=document.createElement('div');ghost.className='drag-ghost';
     const clone=document.createElement('canvas');clone.width=p.canvas.width;clone.height=p.canvas.height;clone.getContext('2d').drawImage(p.canvas,0,0);ghost.append(clone);
+    const mode=labelMode(g.n);if(saved.pieceLabels&&mode!=='aus')ghost.append(labelElement(d.id,mode,'piece-label'));
     const boardSize=$('board').getBoundingClientRect().width,size=boardSize/g.n*1.47;ghost.style.width=size+'px';ghost.style.height=size+'px';d.ghostSize=size;runtime.ghost=ghost;document.body.append(ghost);
   }
   if(d.active){event.preventDefault();runtime.ghost.style.left=(event.clientX-d.ghostSize/2)+'px';runtime.ghost.style.top=(event.clientY-d.ghostSize/2)+'px';
@@ -276,6 +317,8 @@ function init(){
   readSaved();runtime.sound=saved.sound;updateSound();renderGallery();
   if(!storageAvailable)$('storageNote').textContent='Offline · Keine Datenübertragung · Fortschritt nur in dieser Sitzung';
   document.querySelectorAll('.level').forEach(button=>button.addEventListener('click',()=>{saved.level=Number(button.dataset.n);writeSaved();renderGallery();}));
+  document.querySelectorAll('.mode').forEach(button=>button.addEventListener('click',()=>{saved.labels=button.dataset.mode;writeSaved();updateLabelOptions();}));
+  $('pieceLabelsBtn').addEventListener('click',()=>{saved.pieceLabels=!saved.pieceLabels;writeSaved();updateLabelOptions();});
   $('heroPlay').addEventListener('click',()=>{runtime.heroStarted=true;syncHeroVideo();});
   $('soundBtn').addEventListener('click',()=>{runtime.sound=!runtime.sound;saved.sound=runtime.sound;updateSound();writeSaved();if(runtime.sound)playSound('correct');});
   $('homeBtn').addEventListener('click',showGallery);$('backBtn').addEventListener('click',showGallery);
@@ -323,5 +366,5 @@ function initWebApp(){
   if(isStandalone()){document.documentElement.classList.add('standalone');['gesturestart','gesturechange'].forEach(type=>document.addEventListener(type,event=>event.preventDefault()));}
 }
 // Export only deterministic helpers for local tests; not needed by the player.
-window.SternenpuzzleTest={generatePieces,puzzlePath,seededRandom,shuffled,formatTime,sanitizeSave};
+window.SternenpuzzleTest={generatePieces,puzzlePath,seededRandom,shuffled,formatTime,sanitizeSave,slotLabel};
 init();

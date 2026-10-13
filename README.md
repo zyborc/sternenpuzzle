@@ -33,6 +33,9 @@ oder im Ordner `python -m http.server 8765` ausführen und `http://localhost:876
 - Puzzleteil auf seinen Platz ziehen oder erst ein Teil und dann den Platz antippen.
 - Mit Tab und Enter/Leertaste bedienen; nach Auswahl per Tastatur springt der Fokus zum Brett.
 - Im Brett mit Pfeiltasten wechseln und mit Enter/Leertaste einsetzen.
+- Zeichen im Puzzle zum Lernen: Zahlen, Großbuchstaben (A–Y), Würfelpunkte (bis 9 Teile) oder ohne.
+  Optional stehen die Zeichen auch auf den Teilen. Bei eingeschaltetem Ton werden sie vorgelesen
+  („Ka wie Katze“), auch beim Antippen eines freien Platzes.
 - Bildhilfe lässt sich ein- und ausschalten.
 - Die Vorschau zeigt das ganze Bild und pausiert die Uhr.
 - Ein Tipp markiert das ausgewählte Teil und seinen Platz.
