@@ -131,9 +131,38 @@ function updateHero(){
   const theme=themeOf(saved.theme);
   $('heroEyebrow').textContent=theme.eyebrow;$('heroHighlight').textContent=theme.highlight;$('heroText').textContent=theme.text;
 }
+// Treasure route: every world has one route per piece count. Each finished picture lights up its station,
+// all stations together open the chest. Nothing is locked; any station can be played at any time.
+const routeDone=(themeId,n)=>themeMotifs(themeId).filter(i=>saved.stars.includes(`${ASSETS[i].id}:${n}`));
+const routeComplete=(themeId,n)=>routeDone(themeId,n).length===themeMotifs(themeId).length;
+function chestSvg(open){
+  const line='stroke="#29284F" stroke-width="3" stroke-linejoin="round"';
+  const lid=open?`<circle cx="32" cy="28" r="24" fill="#FFE9A8" opacity=".75"/><path d="M12 30 17 8h30l5 22Z" fill="#C27A48" ${line}/><path d="M16 26 20 12h24l4 14Z" fill="#9C5F3A"/>`
+    :`<path d="M9 33c0-11 9-17 23-17s23 6 23 17Z" fill="#C27A48" ${line}/><path d="M9 29h46" stroke="#FFD36E" stroke-width="4"/>`;
+  const treasure=open?`<path d="M12 33c3-7 10-9 20-9s17 2 20 9Z" fill="#FFD36E" ${line}/><circle cx="22" cy="27" r="3.5" fill="#F6A1BD" stroke="#29284F" stroke-width="2"/><circle cx="40" cy="26" r="3.5" fill="#A8DBE9" stroke="#29284F" stroke-width="2"/><path d="M31 18l2 4 4 .6-3 2.8.8 4.2-3.8-2-3.8 2 .8-4.2-3-2.8 4-.6Z" fill="#FFF3B0" stroke="#29284F" stroke-width="1.8"/>`:'';
+  const lock=open?'':`<rect x="27" y="36" width="10" height="11" rx="2.5" fill="#FFD36E" ${line}/><circle cx="32" cy="41" r="1.6" fill="#29284F"/>`;
+  return `<svg class="chest" viewBox="0 0 64 64" aria-hidden="true">${lid}${treasure}<rect x="9" y="32" width="46" height="24" rx="5" fill="#D9925C" ${line}/><path d="M9 41h46" stroke="#FFD36E" stroke-width="5"/>${lock}</svg>`;
+}
+function renderRoute(){
+  const theme=themeOf(saved.theme),n=saved.level,motifs=themeMotifs(theme.id),done=new Set(routeDone(theme.id,n));
+  const next=motifs.find(i=>!done.has(i)),open=next===undefined,left=motifs.length-done.size,chests=LEVELS.filter(l=>routeComplete(theme.id,l)).length;
+  $('routeTitle').textContent=`Deine Schatzroute · ${n*n} Teile`;
+  $('routeText').textContent=open?`Geschafft! Die Schatztruhe für ${n*n} Teile ist offen.`:`Noch ${left} ${left===1?'Bild':'Bilder'} bis zur Schatztruhe. Jede Teilezahl hat ihre eigene Truhe.`;
+  $('routeChests').innerHTML=`${svgIcon('chest')}${chests} / ${LEVELS.length}`;$('routeChests').title=`${chests} von ${LEVELS.length} Schatztruhen in dieser Welt geöffnet`;
+  $('routePath').replaceChildren();$('routePath').style.setProperty('--count',motifs.length+1);
+  motifs.forEach((index,position)=>{
+    const asset=ASSETS[index],isDone=done.has(index),item=document.createElement('li'),button=document.createElement('button');
+    button.type='button';button.className=`station${isDone?' done':''}${index===next?' next':''}`;
+    button.setAttribute('aria-label',`Station ${position+1}: ${asset.title}, ${isDone?'geschafft':index===next?'nächster Halt':'noch offen'}. Puzzle mit ${n*n} Teilen starten.`);
+    button.innerHTML=`<img src="${asset.src}" alt="" width="64" height="64" loading="lazy"><span class="station-badge">${isDone?svgIcon('check'):position+1}</span>`;
+    button.addEventListener('click',()=>startGame(index,n));item.append(button);$('routePath').append(item);
+  });
+  const goal=document.createElement('li');goal.className=`route-goal${open?' open':''}`;
+  goal.innerHTML=`<span role="img" aria-label="${open?'Schatztruhe geöffnet':'Schatztruhe, noch verschlossen'}">${chestSvg(open)}</span>`;$('routePath').append(goal);
+}
 function renderGallery(){
   saved.theme=themeOf(saved.theme).id;
-  $('gallery').replaceChildren();renderThemes();updateHero();
+  $('gallery').replaceChildren();renderThemes();updateHero();renderRoute();$('heroCount').textContent=`${ASSETS.length} gezeichnete Abenteuer`;
   const icon=themeOf(saved.theme).icon;
   themeMotifs(saved.theme).forEach((index,position)=>{
     const asset=ASSETS[index],earned=saved.stars.filter(s=>s.startsWith(asset.id+':')).length;
@@ -308,9 +337,13 @@ function finishGame(){
   $('hintBtn').disabled=true;$('shuffleBtn').disabled=true;$('helpBtn').disabled=true;updateProgress();
   const key=ASSETS[g.motif].id+':'+g.n,newStar=!saved.stars.includes(key);if(newStar)saved.stars.push(key);
   saved.resume=null;writeSaved();updateStars();
+  const themeId=ASSETS[g.motif].theme,chest=newStar&&routeComplete(themeId,g.n);
   $('winText').textContent=`${ASSETS[g.motif].title} ist komplett. Du hast alle Teile an ihren Platz gebracht!`;
   $('winPieces').textContent=g.n*g.n;$('winTime').textContent=formatTime(g.elapsed);
-  $('winAward').textContent=newStar?'Ein neuer Stern für deine Sammlung!':'Dieses Abenteuer hast du wieder wunderbar geschafft!';
+  $('winTitle').textContent=chest?'Schatz gefunden!':'Sternenstark!';if(chest)speak('Schatz gefunden!');
+  document.querySelector('.win-star').innerHTML=chest?chestSvg(true):svgIcon('star');document.querySelector('.win-star').classList.toggle('treasure',chest);
+  $('winAward').textContent=chest?`Die Schatztruhe ist offen! Alle ${themeOf(themeId).title}-Bilder mit ${g.n*g.n} Teilen geschafft.`
+    :newStar?'Ein neuer Stern für deine Sammlung!':'Dieses Abenteuer hast du wieder wunderbar geschafft!';
   setStatus('Sternenstark! Dein Puzzle ist fertig.');playSound('win');confetti();runtime.paused=true;$('winDialog').showModal();
 }
 function init(){
@@ -333,7 +366,10 @@ function init(){
   $('confirmRestart').addEventListener('click',()=>{const g=runtime.game;closeDialog('restartDialog');$('helpBtn').disabled=false;startGame(g.motif,g.n);});
   $('closeWin').addEventListener('click',()=>closeDialog('winDialog'));
   $('winHome').addEventListener('click',()=>{closeDialog('winDialog');showGallery();});
-  $('nextPuzzle').addEventListener('click',()=>{const g=runtime.game;closeDialog('winDialog');$('helpBtn').disabled=false;const list=themeMotifs(ASSETS[g.motif].theme);startGame(list[(list.indexOf(g.motif)+1)%list.length],g.n);});
+  $('nextPuzzle').addEventListener('click',()=>{const g=runtime.game;closeDialog('winDialog');$('helpBtn').disabled=false;
+    // Continue along the treasure route: the next picture without a star at this piece count, otherwise simply the next one.
+    const list=themeMotifs(ASSETS[g.motif].theme),at=list.indexOf(g.motif),ahead=list.slice(at+1).concat(list.slice(0,at+1));
+    startGame(ahead.find(i=>!saved.stars.includes(`${ASSETS[i].id}:${g.n}`))??ahead[0],g.n);});
   ['previewDialog','restartDialog','winDialog'].forEach(id=>$(id).addEventListener('close',afterDialogClose));
   window.addEventListener('pointermove',pointerMove,{passive:false});window.addEventListener('pointerup',pointerUp);
   window.addEventListener('pointercancel',event=>{if(runtime.drag&&event.pointerId===runtime.drag.pointerId)cleanupDrag();});

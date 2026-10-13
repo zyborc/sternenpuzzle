@@ -1,7 +1,7 @@
 'use strict';
 // Offline cache for the installed web app. Bump VERSION whenever a cached file changes,
 // so devices fetch the new files on their next start.
-const VERSION = 'sternenpuzzle-v6';
+const VERSION = 'sternenpuzzle-v7';
 const FILES = [
   './',
   './index.html',
@@ -32,7 +32,25 @@ const FILES = [
   './bilder/15_mops_hubschrauber.png',
   './bilder/16_dackel_baustelle.png',
   './bilder/17_rettungsboot.png',
-  './bilder/18_hunde_team.png'
+  './bilder/18_hunde_team.png',
+  './bilder/19_eispalast.png',
+  './bilder/20_schneemann.png',
+  './bilder/21_schlittschuh_see.png',
+  './bilder/22_schlittenfahrt.png',
+  './bilder/23_polarlicht_nacht.png',
+  './bilder/24_eiskristall_garten.png',
+  './bilder/25_piratenschiff.png',
+  './bilder/26_schatzkarte.png',
+  './bilder/27_schatzinsel.png',
+  './bilder/28_schatztruhe.png',
+  './bilder/29_flaschenpost.png',
+  './bilder/30_kraken_freund.png',
+  './bilder/31_heldenteam.png',
+  './bilder/32_flug_ueber_stadt.png',
+  './bilder/33_drachen_rettung.png',
+  './bilder/34_blitz_lieferung.png',
+  './bilder/35_heldenquartier.png',
+  './bilder/36_sternennacht.png'
 ];
 
 self.addEventListener('install', event => {

@@ -27,7 +27,8 @@ oder im Ordner `python -m http.server 8765` ausführen und `http://localhost:876
 
 ## Spielen
 
-- Drei Welten mit je 6 eigenen Chibi-/Kawaii-Illustrationen (1200 × 1200 Pixel): Weltraum, Dinos und Rettungs-Hunde.
+- Sechs Welten mit je 6 eigenen Chibi-/Kawaii-Illustrationen (1200 × 1200 Pixel): Weltraum, Dinos, Rettungs-Hunde,
+  Eiszauber, Piraten und Superhelden. Alle Figuren sind eigene Entwürfe (keine lizenzierten Figuren, die Seite ist öffentlich).
 - Die Welt wird oben auf der Startseite gewählt; Sterne werden pro Welt angezeigt.
 - 4, 9, 16 oder 25 Teile mit echten Puzzlekonturen.
 - Puzzleteil auf seinen Platz ziehen oder erst ein Teil und dann den Platz antippen.
@@ -40,7 +41,9 @@ oder im Ordner `python -m http.server 8765` ausführen und `http://localhost:876
 - Die Vorschau zeigt das ganze Bild und pausiert die Uhr.
 - Ein Tipp markiert das ausgewählte Teil und seinen Platz.
 - Kein Zeitlimit und keine Strafpunkte.
-- Je ein Sammelstern pro Motiv und Teilezahl (maximal 72).
+- Je ein Sammelstern pro Motiv und Teilezahl (maximal 144).
+- Schatzroute pro Welt und Teilezahl: Jedes geschaffte Bild leuchtet als Station auf, mit allen sechs öffnet sich
+  die Schatztruhe (4 Truhen pro Welt). Nichts ist gesperrt; „Nächstes Abenteuer“ springt zur nächsten offenen Station.
 - Ton ist anfangs ausgeschaltet und lässt sich optional aktivieren.
 - Reduzierte Animationen bei entsprechender Betriebssystemeinstellung.
 
